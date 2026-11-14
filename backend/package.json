@@ -8,13 +8,13 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env src/main.ts",
-    "dev": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env --watch src/main.ts",
-    "dev:keep": "CONDEX_DB_PATH=data/condex.db node --disable-warning=ExperimentalWarning --env-file-if-exists=.env --watch src/main.ts",
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env src/main.ts",
+    "dev": "node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env --watch src/main.ts",
+    "dev:keep": "CONDEX_DB_PATH=data/condex.db node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env --watch src/main.ts",
     "mcp": "node --disable-warning=ExperimentalWarning src/mcp/server.ts",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
     "test:page": "node --disable-warning=ExperimentalWarning scripts/check-test-page.ts",
-    "snapshot": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/market-snapshot.ts",
+    "snapshot": "node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env scripts/market-snapshot.ts",
     "replay": "node --disable-warning=ExperimentalWarning scripts/replay.ts",
     "testnet:pairs": "node --disable-warning=ExperimentalWarning scripts/testnet-pairs.ts",
     "typecheck": "tsc --noEmit"

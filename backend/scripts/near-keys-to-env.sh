@@ -4,7 +4,7 @@
 #
 #   scripts/near-keys-to-env.sh [operator-account] [reporter-account]
 #
-# Defaults: dryward2518.testnet and reporter.dryward2518.testnet. Then start the API with CONDEX_LEDGER=near.
+# Defaults: dryward2518.testnet and reporter.dryward2518.testnet. Then start the API: with these keys it runs on NEAR.
 set -eu
 cd "$(dirname "$0")/.."
 OPERATOR="${1:-dryward2518.testnet}"
@@ -33,4 +33,4 @@ grep -v -E '^CONDEX_NEAR_(OPERATOR|REPORTER)_(ID|KEY)=' "$ENV_FILE" > "$ENV_FILE
 } >> "$ENV_FILE.tmp"
 mv "$ENV_FILE.tmp" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
-echo "Wrote the keys of $OPERATOR and $REPORTER to $ENV_FILE (not printed). Start the API with CONDEX_LEDGER=near."
+echo "Wrote the keys of $OPERATOR and $REPORTER to $ENV_FILE (not printed). Start the API (npm start); with these keys it runs on NEAR."

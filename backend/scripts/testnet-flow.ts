@@ -66,7 +66,7 @@ async function sent(what: string) {
 }
 
 const health = (await api("GET", "/health")).body;
-if (health?.ledger !== "near-testnet") throw new Error(`The API at ${BASE} is not on NEAR (ledger: ${health?.ledger}). Start it with CONDEX_LEDGER=near`);
+if (health?.ledger !== "near-testnet") throw new Error(`The API at ${BASE} is not on NEAR (ledger: ${health?.ledger}). Put the NEAR keys in .env (scripts/near-keys-to-env.sh) and restart it without CONDEX_LEDGER=mock`);
 const contract = (await api("GET", "/v1/chain/outbox")).body.contract as string;
 step("API", `${BASE} on ${contract}`);
 

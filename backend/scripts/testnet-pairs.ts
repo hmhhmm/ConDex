@@ -91,7 +91,7 @@ const health = (await api("GET", "/health").catch(() => null))?.body;
 if (!health) throw new Error(`No ConDex API answered at ${BASE}. Start it with npm start`);
 const onNear = health.ledger === "near-testnet";
 if (!onNear && !mock) {
-  throw new Error(`The API at ${BASE} is on the ${health.ledger} ledger. Start it with CONDEX_LEDGER=near and the NEAR keys in .env, or pass --mock for a dry run`);
+  throw new Error(`The API at ${BASE} is on the ${health.ledger} ledger. Put the NEAR keys in .env (scripts/near-keys-to-env.sh) and restart it without CONDEX_LEDGER=mock, or pass --mock for a dry run`);
 }
 if (onNear && mock) throw new Error("--mock is for the mock ledger, but this API is on NEAR");
 if (health.market_data !== "feed:coingecko") {
