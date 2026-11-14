@@ -9,6 +9,10 @@ This repository holds both halves:
 | [`backend/`](backend/) | The API, the MCP server for Claude Code, private storage, the simulated execution venue, and the NEAR contract (`backend/contract`). Node 24, Express 5. Its [README](backend/README.md) describes the product and every route. |
 | [`frontend/`](frontend/) | The website: gallery, thesis pages with proof, read and trade, orders and keys, payouts, and the publish page. Next.js 16. See [`frontend/docs/BACKEND_LINK.md`](frontend/docs/BACKEND_LINK.md) for how each page maps to the API. |
 
+## On NEAR testnet
+
+The contract is written in Rust (`backend/contract/src`) and deployed at [`dryward2518.testnet`](https://testnet.nearblocks.io/address/dryward2518.testnet). It mints each thesis as an NFT, holds the fee in escrow until the first fill, sells the subscription, and records each trade’s close and the thesis’s evaluation. The backend signs mints with an operator account and settlements, closes and evaluations with a reporter account; the trader signs `subscribe` and `reserve_fee` in their own wallet on the website. A full trade (mint, deposit, subscribe, reserve, settle, close, withdraw) and an on-chain evaluation ran on testnet on 14 November 2026: the creator’s payout is [`FBhCutAH…`](https://testnet.nearblocks.io/txns/FBhCutAHdXLzeXn4yFKw1dvH3RkMgkfoS8CcRTdwJTJU) and the recorded evaluation [`Cf56TgBC…`](https://testnet.nearblocks.io/txns/Cf56TgBCwcdXXGnPFA8EiuMipn76P1MANWSwRQNi2EsC). [Built and working on NEAR testnet](backend/README.md#built-and-working-on-near-testnet) links every transaction as a proof; see also [`backend/docs/near-contract.md`](backend/docs/near-contract.md).
+
 ## Run it
 
 ```sh

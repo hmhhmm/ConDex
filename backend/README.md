@@ -4,7 +4,7 @@
 
 Anyone can read a thesis’s abstract and its author’s accuracy for free; an active ConDex subscription unlocks the complete thesis. A borrower pays a usage fee only when a trade they linked to that NFT receives a confirmed fill, and the fee goes to the creator. Each filled trade is recorded on the NFT as a proof of trade, and the creator’s score is calculated from those proofs and from ConDex’s own evaluation of each thesis against market data. Nothing in it is reported by the creator.
 
-> **Build status** — NEAR Hackathon project. The off-chain services (API, MCP server, private storage, simulated execution venue) run locally against a **mock ledger** that stands in for the NEAR contract. Publishing with conditions and an expiry, free abstracts with the author’s score, the subscription that unlocks the full thesis, matching a trade to its thesis, a public proof of thesis and trade, paying the creator per filled trade, closing a trade, evaluating a thesis against real market prices from CoinGecko (or a simulated feed), verified results and the creator score work today, and a dev-mode replay runs a past market window at its real prices. The API also runs on the NEAR testnet contract when its keys are configured. The creator’s own track record and the product frontend are not built yet. [What the prototype does today](#what-the-prototype-does-today) compares each rule below with the code.
+> **Build status** — NEAR Hackathon project. The NEAR contract is deployed on testnet at `dryward2518.testnet`, and the API runs on it whenever the operator and reporter keys are configured; a **mock ledger** stands in for it otherwise, and in the tests. Publishing with conditions and an expiry, free abstracts with the author’s score, the subscription that unlocks the full thesis, matching a trade to its thesis, a public proof of thesis and trade, paying the creator per filled trade, closing a trade, evaluating a thesis against real market prices from CoinGecko (or a simulated feed), verified results and the creator score work today, and a dev-mode replay runs a past market window at its real prices. The website (`../frontend`) signs the trader’s `subscribe` and `reserve_fee` in their own wallet. The creator’s own track record is not built yet. [Built and working on NEAR testnet](#built-and-working-on-near-testnet) lists what has run on chain, and [What the prototype does today](#what-the-prototype-does-today) compares each rule below with the code.
 
 ## The problem
 
@@ -199,7 +199,7 @@ The figures are before trading costs. The usage fee is paid in NEAR, so it is sh
 
 ## Where NEAR fits
 
-| Component | Planned responsibility |
+| Component | Responsibility |
 | --- | --- |
 | MCP server and API | Accept authorised uploads from creators’ agents, remind them to set the expiry, issue scoped access, and serve theses by token ID. |
 | NEAR contract | Mint one NFT (NEP-171) per thesis version, record each proof of trade on it, hold its revenue split, reserve authorised fees, and pay each collected fee according to the split. |
@@ -208,6 +208,56 @@ The figures are before trading costs. The usage fee is paid in NEAR, so it is sh
 | ConDex AI | Set the expiry date when the creator gives none, and record why. |
 | Market data feed | Supply the prices each thesis is evaluated against after its expiry: one-minute candles from CoinGecko. |
 | Score service | Evaluate each thesis against market data after its expiry, and calculate each NFT’s verified results and each creator’s score. |
+
+## Built and working on NEAR testnet
+
+**The contract.** Written in Rust in [`contract/src`](contract/src) and deployed at `dryward2518.testnet`; `nft_metadata` answers with `ConDex Thesis` (`CONDEX`). [docs/near-contract.md](docs/near-contract.md) lists every function, who may call it, and the deployment and upgrade transactions. It has four parts:
+
+| Part | Functions |
+| --- | --- |
+| Theses as NFTs | `mint_thesis`, `nft_token`, `nft_transfer`, `nft_transfer_call` |
+| Fee escrow | `deposit` and `withdraw`; `reserve_fee`, the trader’s one approval, signed from their own account; `settle_fee`, which pays the creator on the first fill, callable only by the reporter account and checked against a proof; `release_fee`, which returns the fee if the order never fills |
+| Subscription | `subscribe`, which takes attached NEAR and pays ConDex; `subscription_of`; `set_subscription_terms` |
+| Results on chain | `record_close`; `record_evaluation`, refused before the thesis’s deadline and written only once; `get_evaluation`, `get_proofs`, `balance_of`, `get_reserve` |
+
+**The backend** calls the contract through `src/ledger/nearLedger.ts` and `src/near/`:
+
+- The operator account signs `mint_thesis`.
+- The reporter account signs `settle_fee`, `release_fee`, `record_close` and `record_evaluation`.
+- Calls go through an outbox that retries them.
+- Subscriptions, balances and reserves are read from the contract.
+- A sweep runs every 60 seconds and records evaluations once each deadline has passed.
+- Wallet sign-in uses NEP-413, and the signing key is checked against the account over RPC.
+
+**The frontend** connects wallets with `@hot-labs/near-connect`. The trader signs `subscribe` and `reserve_fee` in their own wallet ([`frontend/src/lib/near/contract.ts`](../frontend/src/lib/near/contract.ts)).
+
+**Live testnet runs, 14 November 2026.** Each link opens the transaction on the testnet explorer. The contract account and all its transactions: [`dryward2518.testnet`](https://testnet.nearblocks.io/address/dryward2518.testnet).
+
+| Run | Step | Signed by | Transaction |
+| --- | --- | --- | --- |
+| Deployment | Deploy the contract | `dryward2518.testnet` | [`2HMwFmJW…`](https://testnet.nearblocks.io/txns/2HMwFmJWjh4q9513WUC3RzrXEpaS4yNvgfuD7jeDZAbX) |
+| | Upgrade, adding the evaluation, with every stored value kept | `dryward2518.testnet` | [`6JzPq6xE…`](https://testnet.nearblocks.io/txns/6JzPq6xELkES6CCSb9A49D8rw4QcFGPdvvN4xBwWDcS7) |
+| One full trade (`ins_testnet1-v1`, `ord_testnet1`) | `mint_thesis` | operator | [`CYiDpSzx…`](https://testnet.nearblocks.io/txns/CYiDpSzxWH9nJA52umMKqZLePXMZTowv5bmoTD6xb2Ld) |
+| | `deposit` | trader | [`6vPTE8oi…`](https://testnet.nearblocks.io/txns/6vPTE8oi8yFBJgzTN4ckXctzXEeB1vHcK5YkK5imQSWx) |
+| | `subscribe` | trader | [`H2FemHLE…`](https://testnet.nearblocks.io/txns/H2FemHLEz3KHuc7y54dVoHkEL3foV9Q5iuNJE1LudsPK) |
+| | `reserve_fee` | trader | [`DGDCSLyK…`](https://testnet.nearblocks.io/txns/DGDCSLyKe974AVFwLohpripsQPKNtqa6BpgcbWd2osxm) |
+| | `settle_fee`: the creator is paid on the first fill | reporter | [`FBhCutAH…`](https://testnet.nearblocks.io/txns/FBhCutAHdXLzeXn4yFKw1dvH3RkMgkfoS8CcRTdwJTJU) |
+| | `record_close` | reporter | [`8ofiWJsA…`](https://testnet.nearblocks.io/txns/8ofiWJsA44UDSJZphZGRYDyMYZ8VAfHfsTYMnE1Zwen9) |
+| | `withdraw` | trader | [`EFy8zats…`](https://testnet.nearblocks.io/txns/EFy8zatsSCcomfPuQwzoFg8JgEe9gbvua2qi4gLR8bz1) |
+| The API flow script, `scripts/testnet-flow.ts` | `mint_thesis` | operator | [`AUJdLdsn…`](https://testnet.nearblocks.io/txns/AUJdLdsn4ZUbmsjQQJLDgYGnygKi4HLEmET28XpJf43) |
+| | `deposit` | trader | [`8FqiHurY…`](https://testnet.nearblocks.io/txns/8FqiHurYRB3T4BX2UfN4kuim1AK8Ueue9EYZdJTEbsGF) |
+| | `reserve_fee` for the order that fills (`ord_CdQfIzGEt2D6`) | trader | [`3dnC9gdN…`](https://testnet.nearblocks.io/txns/3dnC9gdNNvxAqNfpd68gTrsPi6GGJpASTpPzycvxpB4n) |
+| | `settle_fee` for it | reporter | [`Ebcks65J…`](https://testnet.nearblocks.io/txns/Ebcks65Ji8u63z6VURrqXJfLj95K3dmPob6KLuPKdF39) |
+| | `record_close` | reporter | [`22LGdk46…`](https://testnet.nearblocks.io/txns/22LGdk46rJQqjrfoqhQxhda4CMNyjSQk8P6Xum1AZejo) |
+| | `reserve_fee` for an order that never fills (`ord_fpIU1U5S256W`) | trader | [`7cF7o2wK…`](https://testnet.nearblocks.io/txns/7cF7o2wKoRNhSgroas2uFLVh4wQ9QdDWLHGayvV5Qza2) |
+| | `release_fee`: its fee goes back to the trader | reporter | [`56mkMtmb…`](https://testnet.nearblocks.io/txns/56mkMtmb1AYErd4TSThKuEcjXKg5wFSyVeYJNTqniSMN) |
+| The evaluation | `record_evaluation` before the deadline, refused by the contract (`ins_NbHih4uEqFow-v1`: “has not expired yet”) | reporter | [`3bDykTiK…`](https://testnet.nearblocks.io/txns/3bDykTiKaZ9rcRCMoVf5Y1DBU2VZQBA2fzEnuarqgXPW) |
+| | `record_evaluation` recorded by the sweep (`ins_rZNrg0mOomS5-v1`: `in_direction`, conditions met), returns `true` | reporter | [`Cf56TgBC…`](https://testnet.nearblocks.io/txns/Cf56TgBCwcdXXGnPFA8EiuMipn76P1MANWSwRQNi2EsC) |
+| | A second `record_evaluation` for the same thesis, with a different outcome: returns `false` and changes nothing | reporter | [`HboxRN53…`](https://testnet.nearblocks.io/txns/HboxRN53hppRAvSQEVNJrzoyVFxSAp9EmCjGGxFRPkej) |
+
+The operator is `dryward2518.testnet`, the reporter `reporter.dryward2518.testnet` and the trader `trader.dryward2518.testnet`.
+
+**Tests.** 57 Rust unit tests (`cargo test` in `contract/`), 4 sandbox tests on a local NEAR node in `contract/sandbox`, including an upgrade that keeps the state, and `test/nearLedger.test.ts` for the API’s NEAR ledger. See [Building and testing](docs/near-contract.md#building-and-testing).
 
 ## What the prototype does today
 
@@ -220,10 +270,10 @@ The API and code call a thesis an *insight*, and its fingerprint a `content_hash
 | Access expiry and evaluation deadline as separate items | Built. The proof of thesis shows `published_at`, `expires_at` and `evaluation_deadline`. The creator may send `evaluation_deadline` (a date or an ISO date-time, from the expiry up to 30 days after); without it, it equals the expiry. The evaluation and the sweep wait for it. |
 | Expiry stops new trades | Built. After the expiry, fee quotes and linked orders are refused, and reading still works. |
 | Thesis conditions as fields | Built. Market, direction, entry and invalidation are required fields, and the target is optional. The market and direction are public. The entry, invalidation and target are served with the conversation. Optional price levels (`entry_price`, `invalidation_price`, `target_price`) are checked against the direction, covered by the fingerprint and served with the conversation. |
-| Thesis NFT | Partly. Each version gets a token record on the mock ledger with a fingerprint, creator, payout account, fee, publish time, expiry and who set the expiry. It is not yet an NEP-171 NFT on NEAR. |
+| Thesis NFT | Built, on the NEAR contract, with the mock ledger as the backup. Each version is minted as an NEP-171 NFT (`mint_thesis`, signed by the operator account) with a fingerprint, creator, payout account, fee, publish time, expiry and who set the expiry. |
 | Original conditions preserved | Built. A published version cannot be edited. Its fingerprint covers the conditions and the expiry, a reader can recompute it, and every read re-checks the stored content against the minted hash (`integrity.matches`). A change is a new version with a new token. |
-| Proof of thesis | Built, against the mock ledger. `GET /v1/tokens/:id/proof` is public and shows the creator, publish time, expiry and who set it, fingerprint, fee, mint transaction and whether the thesis is still `preserved`. It never includes the conversation or the creator’s entry, invalidation and target. |
-| Proof of trade on the NFT | Built, against the mock ledger. The same endpoint lists each proof of trade: trader, role, the order, the first fill (time, price, quantity, evidence source), the fee paid and the settlement transaction. A trade is closed by a `close` execution event on its order, with a quantity and a price (see [Closing a trade and reading the results](#closing-a-trade-and-reading-the-results)). The proof then shows `closing_fill`: the average closing price, the quantity closed, and `complete` once the whole trade is closed. A fully closed trade has a `result`: entry and exit price, entry value, net profit in dollars and net return %. A trader can also close with a closing order, `POST /v1/orders/:orderId/close` (MCP: `condex_close_trade`), on the opposite side with no fee. Its confirmed fills count as closing fills in the same way, and `trade` shows the status (`open`, `partially_closed` or `closed`), each closing fill and a running result. Each result is in the market's quote currency and excludes the NEAR usage fee. Only the fee payment is written to the mock ledger, so the closing fill is not yet on NEAR. |
+| Proof of thesis | Built, on the NEAR contract, with the mock ledger as the backup. `GET /v1/tokens/:id/proof` is public and shows the creator, publish time, expiry and who set it, fingerprint, fee, mint transaction and whether the thesis is still `preserved`. It never includes the conversation or the creator’s entry, invalidation and target. |
+| Proof of trade on the NFT | Built, on the NEAR contract, with the mock ledger as the backup. The same endpoint lists each proof of trade: trader, role, the order, the first fill (time, price, quantity, evidence source), the fee paid and the settlement transaction. A trade is closed by a `close` execution event on its order, with a quantity and a price (see [Closing a trade and reading the results](#closing-a-trade-and-reading-the-results)). The proof then shows `closing_fill`: the average closing price, the quantity closed, and `complete` once the whole trade is closed. A fully closed trade has a `result`: entry and exit price, entry value, net profit in dollars and net return %. A trader can also close with a closing order, `POST /v1/orders/:orderId/close` (MCP: `condex_close_trade`), on the opposite side with no fee. Its confirmed fills count as closing fills in the same way, and `trade` shows the status (`open`, `partially_closed` or `closed`), each closing fill and a running result. Each result is in the market's quote currency and excludes the NEAR usage fee. On NEAR the reporter account writes the fee payment (`settle_fee`) and the close (`record_close`) to the NFT; `get_proofs` reads them back. |
 | Thesis evaluation | Built. With `CONDEX_COINGECKO_API_KEY` set, theses are judged on real one-minute candles from CoinGecko (`source: "feed:coingecko"`, with the pool and the attribution in the evaluation). A sweep fetches the candles in the background every minute and keeps them locally, so no request waits on CoinGecko, and a thesis stays `pending` (with `waiting_for: "market_data"` once past its deadline) until its whole window is held: it is judged a few minutes after the deadline. Only ETH-USD has a pool configured; another market is recorded as `no_data`. Without the key the feed is the simulated one: prices are recorded with `POST /v1/sim/market/:market/prices` in dev mode, and the first request for the proof or the publisher page after the deadline evaluates the thesis. Before the deadline the proof endpoint shows `evaluation.status: "pending"`. The outcome is stored once and never changed. `expires_at` is the last moment to link a trade; the evaluation waits for `evaluation_deadline`, which is the same moment unless the creator set a later one. With the NEAR contract, the evaluation is also recorded on the thesis NFT (`record_evaluation`, refused before the expiry by the chain's clock, never replaced), and a sweep evaluates expired theses every minute without anyone opening them; the proof shows the transaction as `evaluation.recorded.tx`. |
 | Verified results | Built. `verified_results` on the proof endpoint gives the number of fully closed trades, net return %, net profit in dollars and maximum drawdown % for that thesis, before trading costs. They are calculated on each request and are not written to the mock ledger. |
 | Matching | Built for checks 1 to 4. An order in another market, against the thesis’s direction or after the expiry is refused before any fee is reserved, and each linked order records what was checked. Check 5 uses the simulated venue or the execution endpoint. |
@@ -484,13 +534,13 @@ Invalid values (a misspelt network, `CONDEX_DEV_MODE=yes`, a timeout of `5m`) st
 
 ## Planned testnet demo
 
-- [ ] Publish a selected conversation with its conditions and expiry from an agent, and mint its thesis NFT on NEAR testnet.
+- [x] Publish a selected conversation with its conditions and expiry from an agent, and mint its thesis NFT on NEAR testnet. (Through the API, `scripts/testnet-flow.ts`, on 14 November 2026.)
 - [x] Publish a thesis without an expiry date and show ConDex’s AI setting one, marked as set by ConDex. (Works against the mock ledger.)
 - [ ] Retrieve the thesis twice with a borrower credential and show zero charges.
 - [ ] Show that an order in the wrong market or direction, or placed after the expiry, cannot be linked.
-- [ ] Demonstrate a cancelled, unfilled order and release the reserved fee.
-- [ ] Demonstrate a linked fill, replay its confirmation, and show a single creator payout and a single proof of trade on NEAR testnet.
+- [x] Demonstrate a cancelled, unfilled order and release the reserved fee. (On testnet on 14 November 2026, transaction [`56mkMtmb…`](https://testnet.nearblocks.io/txns/56mkMtmb1AYErd4TSThKuEcjXKg5wFSyVeYJNTqniSMN).)
+- [ ] Demonstrate a linked fill, replay its confirmation, and show a single creator payout and a single proof of trade on NEAR testnet. (The fill, the payout and the proof of trade ran on testnet on 14 November 2026; replaying the confirmation there is still to show.)
 - [ ] Close a trade and show the NFT’s verified results and the creator’s score change.
 - [ ] Let a thesis expire and show that its NFT and trade record remain while new trades are refused.
-- [ ] After the expiry, show ConDex’s evaluation of the thesis against market data and the creator’s accuracy.
+- [x] After the expiry, show ConDex’s evaluation of the thesis against market data and the creator’s accuracy. (Recorded on the thesis NFT on testnet on 14 November 2026; an early evaluation was refused and an overwrite returned `false`.)
 - [ ] Label the source of execution evidence in the demo so viewers can distinguish a simulated fill from a live venue confirmation.
