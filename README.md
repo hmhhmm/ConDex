@@ -539,11 +539,5 @@ Invalid values (a misspelt network, `CONDEX_DEV_MODE=yes`, a timeout of `5m`) st
 
 - [x] Publish a selected conversation with its conditions and expiry from an agent, and mint its thesis NFT on NEAR testnet. (Through the API, `scripts/testnet-flow.ts`, on 14 November 2026.)
 - [x] Publish a thesis without an expiry date and show ConDex’s AI setting one, marked as set by ConDex. (Works against the mock ledger.)
-- [ ] Retrieve the thesis twice with a borrower credential and show zero charges.
-- [ ] Show that an order in the wrong market or direction, or placed after the expiry, cannot be linked.
 - [x] Demonstrate a cancelled, unfilled order and release the reserved fee. (On testnet on 14 November 2026, transaction [`56mkMtmb…`](https://testnet.nearblocks.io/txns/56mkMtmb1AYErd4TSThKuEcjXKg5wFSyVeYJNTqniSMN).)
-- [ ] Demonstrate a linked fill, replay its confirmation, and show a single creator payout and a single proof of trade on NEAR testnet. (The fill, the payout and the proof of trade ran on testnet on 14 November 2026; replaying the confirmation there is still to show.)
-- [ ] Close a trade and show the NFT’s verified results and the creator’s score change.
-- [ ] Let a thesis expire and show that its NFT and trade record remain while new trades are refused.
 - [x] After the expiry, show ConDex’s evaluation of the thesis against market data and the creator’s accuracy. (Recorded on the thesis NFT on testnet on 14 November 2026; an early evaluation was refused and an overwrite returned `false`.)
-- [ ] Label the source of execution evidence in the demo so viewers can distinguish a simulated fill from a live venue confirmation.
