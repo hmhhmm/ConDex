@@ -1,0 +1,34 @@
+{
+  "name": "condex",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ConDex off-chain services: API, MCP server, private storage, execution integration and a mock NEAR ledger.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env src/main.ts",
+    "dev": "node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env --watch src/main.ts",
+    "dev:keep": "CONDEX_DB_PATH=data/condex.db node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env --watch src/main.ts",
+    "mcp": "node --disable-warning=ExperimentalWarning src/mcp/server.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "test:page": "node --disable-warning=ExperimentalWarning scripts/check-test-page.ts",
+    "snapshot": "node --disable-warning=ExperimentalWarning --env-file-if-exists=../.env --env-file-if-exists=.env scripts/market-snapshot.ts",
+    "replay": "node --disable-warning=ExperimentalWarning scripts/replay.ts",
+    "testnet:pairs": "node --disable-warning=ExperimentalWarning scripts/testnet-pairs.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "express": "^5.3.0",
+    "near-api-js": "^7.5.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  }
+}
